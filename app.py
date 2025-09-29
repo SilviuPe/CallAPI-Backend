@@ -1,8 +1,8 @@
 from flask import Flask, jsonify, request
 from auth import auth_routes  # import the auth blueprint
-
+from flask_cors import CORS
 app = Flask(__name__)
-
+CORS(app)
 # Register the blueprint for auth routes
 app.register_blueprint(auth_routes, url_prefix="/auth")
 

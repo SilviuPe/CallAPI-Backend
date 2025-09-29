@@ -62,14 +62,14 @@ class Database(object):
                     return {
                         'status': 409,
                         'data': {
-                            'message': f"User {data['username']} already exists"
+                            'message': f"User \"{data['username']}\" already exists"
                         }
                     }
                 elif session.query(User).filter(User.email == data['email']).first():
                     return {
                         'status': 409,
                         'data' : {
-                            'message': f"Email {data['email']} already in use"
+                            'message': f"Email \"{data['email']}\" already in use"
                         }
                     }
                 else:
