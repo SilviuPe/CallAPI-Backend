@@ -1,10 +1,10 @@
 import os
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker  # <- aici
+from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 
-from .models import User
+from database.models import User, ClientSession
 from utils.hashpasswd import hash_password
 
 load_dotenv('./.env')
@@ -110,7 +110,7 @@ class Database(object):
             return self.connection_response
 
 
-    def get_all_users_data(self) -> dict:
+    def get_all_users_data(self, id: int = 0) -> dict:
         """
         Method that gets all users data
         :return: dictionary with all users data or error information
@@ -121,15 +121,28 @@ class Database(object):
 
                 session: Session = self.connection_response["connection"]
 
-                users = session.query(User).all()
-                users = [user.to_dict() for user in users]
-
-                return {
-                    'status': 200,
-                    'data': {
-                        'users': users
+                if id > 0:
+                    user = session.query(User).filter(User.id == id).first()
+                    print(user.email)
+                    return {
+                        'status': 200,
+                        'data': {
+                            'user': {
+                                'name':user.username
+                            }
+                        }
                     }
-                }
+
+                else:
+                    users = session.query(User).all()
+                    users = [user.to_dict() for user in users]
+
+                    return {
+                        'status': 200,
+                        'data': {
+                            'users': users
+                        }
+                    }
 
             else:
                 return self.connection_response
@@ -141,4 +154,114 @@ class Database(object):
                     'data': {
                         'message': str(error)
                     }
+            }
+
+    def create_session(self, user_id, session_hash, expires_at):
+
+
+        try:
+
+            if self.connection_response['status'] == 200:
+
+                session: Session = self.connection_response["connection"]
+                if not session.query(User).filter(User.id == user_id).first():
+                    return {
+                        'status': 400,
+                        'data': {'message': f"User with ID \"{user_id}\" does not exist"}
+                    }
+                else:
+
+                    new_session = ClientSession(
+                        user_id=user_id,
+                        session_hash=session_hash,
+                        expires_at=expires_at
+                    )
+
+                    session.add(new_session)
+                    session.commit()
+                    session.refresh(new_session)
+
+                    return {
+                        'status': 201,
+                        'data': {
+                            'message': "Session token created successfully",
+                            'session': new_session.to_dict()
+                        }
+                    }
+        except Exception as error:
+            print(error)
+            return {
+                'status': 400,
+                'data': {'message': str(error)}
+            }
+
+    def validate_session(self, session_hash: str) -> dict:
+        """
+        Method to validate the session
+        :return: dictionary with validation data or error information
+        """
+        try:
+
+            if self.connection_response['status'] == 200:
+
+                session: Session = self.connection_response["connection"]
+
+                client_session = session.query(ClientSession).filter(ClientSession.session_hash == session_hash).first()
+
+                if client_session:
+                    return {
+                        'status': 302,
+                        'data': {
+                            'message': "Session token valid!",
+                            'user_id' : client_session.user_id,
+                        }
+                    }
+                else:
+                    return {
+                        'status': 401,
+                        'data': {'message': "Session token expired!"}
+                    }
+
+            else:
+                return self.connection_response
+
+        except Exception as error:
+            print(error)
+            return {
+                'status': 400,
+                'data': {'message': str(error) }
+            }
+
+    def delete_session(self, session_hash: str):
+        try:
+            if self.connection_response['status'] == 200:
+                session: Session = self.connection_response["connection"]
+
+                client_session = (
+                    session.query(ClientSession)
+                    .filter(ClientSession.session_hash == session_hash)
+                    .first()
+                )
+
+                if client_session:
+                    session.delete(client_session)
+                    session.commit()
+                    return {
+                        'status': 200,
+                        'data': {'message': "Session deleted!"}
+                    }
+                else:
+                    return {
+                        'status': 404,
+                        'data': {'message': "Session not found!"}
+                    }
+
+            else:
+                return self.connection_response
+
+        except Exception as error:
+            print(error)
+            return {
+                'status': 400,
+                'data': {'message': str(error)}
             }
