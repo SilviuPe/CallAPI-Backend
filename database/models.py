@@ -14,7 +14,6 @@ class User(Base):
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
-
 class ClientSession(Base):
     __tablename__ = "sessions"
 
@@ -22,6 +21,25 @@ class ClientSession(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     session_hash = Column(String)
     expires_at = Column(DateTime)
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+class Collection(Base):
+    __tablename__ = "collections"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String)
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+class Endpoint(Base):
+    __tablename__ = "endpoints"
+    id = Column(Integer, primary_key=True)
+    collection_id = Column(Integer, ForeignKey("collections.id"))
+    url = Column(String)
+    method = Column(String)
 
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
