@@ -364,7 +364,12 @@ class Database(object):
             }
 
     def remove_collections_from_user(self, user_id: int, collection_title: str) -> dict:
-
+        """
+        Method to remove a specific collection from a user.
+        :param user_id:  ID of the user
+        :param collection_title: Title of the collection
+        :return: Dictionary with removed collection message or error information
+        """
         try:
             if self.connection_response['status'] == 200:
                 session: Session = self.connection_response["connection"]
@@ -381,6 +386,42 @@ class Database(object):
                     return {
                         'status': 404,
                         'data': {'message': "Collection not found!"}
+                    }
+            else:
+                return self.connection_response
+
+        except Exception as error:
+            print(error)
+            return {
+                'status': 400,
+                'data': {'message': str(error)}
+            }
+
+    def add_collection(self, user_id: int, collection_title: str) -> dict:
+        """
+        Method to add a specific collection to an existing user.
+        :param user_id:  ID of the user
+        :param collection_title: Title of the collection
+        :return: Dictionary with removed collection message or error information
+        """
+        try:
+            if self.connection_response['status'] == 200:
+                session: Session = self.connection_response["connection"]
+                collection = session.query(Collection).filter(Collection.user_id == user_id, Collection.title == collection_title).first()
+
+                if collection:
+                    return {
+                        'status': 400,
+                        'data': {'message': f"Collection with title \"{collection_title}\" already exists!"}
+                    }
+                else:
+                    new_collection = Collection(title=collection_title, user_id=user_id)
+                    session.add(new_collection)
+                    session.commit()
+                    session.refresh(new_collection)
+                    return {
+                        'status': 201,
+                        'data': {'message': "Collection added successfully!"}
                     }
             else:
                 return self.connection_response

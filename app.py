@@ -76,7 +76,7 @@ def remove_collection():
                 return remove_request['data'], remove_request['status']
 
             else:
-                return ['Invalid collection title'], 400
+                return ['Invalid JSON.'], 400
 
         else:
             resp = make_response(jsonify({"type": "redirect", "value": "/auth"}), 401)
@@ -91,5 +91,38 @@ def remove_collection():
         print(error)
         return ["Internal Server Error"], 500
 
+
+@app.route('/add-collection', methods=['POST'])
+def add_collection():
+    try:
+        sid = request.cookies.get("sid")
+        user_id = validate_session(sid)
+
+        if user_id:
+
+            data = request.get_json()
+            collection_title = data.get('title')
+            if collection_title:
+
+                db =  Database()
+                add_request = db.add_collection(user_id=user_id, collection_title=collection_title)
+
+                return add_request['data'], add_request['status']
+
+            else:
+                return ['Invalid JSON'], 400
+
+        else:
+            resp = make_response(jsonify({"type": "redirect", "value": "/auth"}), 401)
+            resp.set_cookie(
+                "sid", str(),
+                httponly=True, secure=False, samesite="Lax",
+                max_age=24 * 3600
+            )
+            return resp
+
+    except Exception as error:
+        print(error)
+        return ["Internal Server Error"], 500
 if __name__ == "__main__":
     app.run(debug=True)
