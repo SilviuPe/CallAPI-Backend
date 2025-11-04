@@ -130,7 +130,6 @@ class Database(object):
 
                 if user_id > 0:
                     user = session.query(User).filter(User.id == user_id).first()
-                    print(user.email)
                     return {
                         'status': 200,
                         'data': {
@@ -309,8 +308,6 @@ class Database(object):
                         if endpoints['status'] == 200:
                             collections[collections.index(collection)].update(endpoints['data'])
 
-                        del collections[collections.index(collection)]['id']
-                        del collections[collections.index(collection)]['user_id']
                     return {
                         'status': 200,
                         'data': {'collections': collections}
@@ -346,8 +343,8 @@ class Database(object):
                 endpoints = [endpoint.to_dict() for endpoint in endpoints]
 
                 for endpoint in endpoints:
-                    del endpoints[endpoints.index(endpoint)]['id']
                     del endpoints[endpoints.index(endpoint)]['collection_id']
+                    endpoints[endpoints.index(endpoint)]['method'] = endpoints[endpoints.index(endpoint)]['method'].lower()
 
                 return {
                     'status': 200,
@@ -432,3 +429,143 @@ class Database(object):
                 'status': 400,
                 'data': {'message': str(error)}
             }
+
+    def add_endpoint(self, collection_id: int, endpoint_data: dict ) -> dict:
+        """
+        Method to add a specific endpoint to an existing collection.
+        :param collection_id:  ID of the collection
+        :param endpoint_data: Dictionary with endpoint data eg:
+            {
+                "title": "...",
+                "url": "https://...",
+                "method": "GET",
+                "body": "...",
+                "headers": {...},
+            }
+        :return: Dictionary with endpoint add request status message or error information
+        """
+
+        required_endpoint_data_keys = ['title', 'url', 'method']
+
+        for key in required_endpoint_data_keys:
+            if key not in endpoint_data.keys():
+                return {
+                    'status': 400,
+                    'data': {'message': f"\'{key}\' in endpoint json is required!"}
+                }
+
+        try:
+            if self.connection_response['status'] == 200:
+                session: Session = self.connection_response["connection"]
+                endpoint = session.query(Endpoint).filter(Endpoint.collection_id == collection_id, Endpoint.title == endpoint_data['title']).first()
+
+                if endpoint:
+                    return {
+                        'status': 400,
+                        'data': {'message': f"Collection with title \"{endpoint_data['title']}\" already exists!"}
+                    }
+                else:
+                    new_endpoint = Endpoint(
+                                        title=endpoint_data['title'],
+                                        collection_id=collection_id,
+                                        url=endpoint_data['url'],
+                                        method=endpoint_data['method'].upper())
+
+                    session.add(new_endpoint)
+                    session.commit()
+                    session.refresh(new_endpoint)
+                    return {
+                        'status': 201,
+                        'data': {'message': "Endpoint added successfully!"}
+                    }
+            else:
+                return self.connection_response
+
+        except Exception as error:
+            print(error)
+            return {
+                'status': 400,
+                'data': {'message': str(error)}
+            }
+
+
+    def change_endpoint(self, id_: int, collection_id: int, endpoint_data: dict) -> dict:
+        """
+        Method to change a specific endpoint to an existing collection.
+        :param id_:  ID of the endpoint
+        :param collection_id: ID of the collection
+        :param endpoint_data: Dictionary with endpoint data eg:
+            {
+                "title": "...",
+                "url": "https://...",
+                "method": "GET",
+                "body": "...",
+                "headers": {...},
+            }
+        :return: Dictionary with endpoint add request status message or error information
+        """
+
+        required_endpoint_data_keys = ['title', 'url', 'method']
+        any_key = False
+        for key in required_endpoint_data_keys:
+            if key in endpoint_data.keys():
+               any_key = True
+               break
+
+        if not any_key:
+            return {
+                'status': 400,
+                'data': {'message': "Missing required endpoint data!"}
+            }
+
+        else:
+            try:
+                if self.connection_response['status'] == 200:
+                    session: Session = self.connection_response["connection"]
+                    endpoint = session.query(Endpoint).filter(Endpoint.id == id_).first()
+
+
+                    if 'title' in endpoint_data:
+                        all_endpoints_from_collection = session.query(Collection).filter(Collection.id == collection_id).all()
+
+                        for endpoint_from_collection in all_endpoints_from_collection:
+                            if endpoint_from_collection.title == endpoint_data['title']:
+                                return {
+                                    'status': 400,
+                                    'data': {'message': "Endpoint with this title already exists!"}
+                                }
+
+
+                    if endpoint:
+                        for column in required_endpoint_data_keys:
+                            if hasattr(endpoint, column):
+                                if column == 'method':
+                                    endpoint_data[column] = endpoint_data[column].upper()
+                                setattr(endpoint, column, endpoint_data[column])
+
+                        session.commit()
+                        session.refresh(endpoint)
+
+                        return {
+                            'status': 200,
+                            'data': {'message': "Endpoint changed successfully!"}
+                        }
+
+                    else:
+                        return {
+                            'status': 404,
+                            'data': {'message': "Endpoint not found!"}
+                        }
+                else:
+                    print(self.connection_response)
+                    return {
+                        'status': 400,
+                        'data': {'message': "Internal server error!"}
+                    }
+            except Exception as error:
+                print(error)
+                return {
+                    'status': 400,
+                    'data': {'message': str(error)}
+                }
+

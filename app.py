@@ -8,7 +8,7 @@ app = Flask(__name__)
 CORS(
     app,
     supports_credentials=True,
-    resources={r"/*": {"origins": ["http://localhost:5173", "http://127.0.0.1:5173/"]}},
+    resources={r"/*": {"origins": ["http://localhost:5174", "http://127.0.0.1:5173/", "http://localhost:4173", "http://localhost:5173"]}},
 )
 # Register the blueprint for auth routes
 app.register_blueprint(auth_routes, url_prefix="/auth")
@@ -38,7 +38,15 @@ def user_information_endpoint():
                 collections = db.get_collections_from_user(user_id=user_id)
                 if collections['status'] == 200:
 
-                    user_information['data'].update(collections['data'])
+                    client_collection_data = []
+
+                    for collection in collections['data']['collections']:
+                        print(collection)
+                        del collection['id']
+                        del collection['user_id']
+                        client_collection_data.append(collection)
+
+                    user_information['data'].update({'collections' : client_collection_data})
 
                 return user_information['data'], user_information['status']
             else:
@@ -124,5 +132,75 @@ def add_collection():
     except Exception as error:
         print(error)
         return ["Internal Server Error"], 500
+
+
+@app.route('/add-endpoint', methods=['POST'])
+def add_endpoint():
+    try:
+        sid = request.cookies.get("sid")
+        user_id = validate_session(sid)
+
+        if user_id:
+            data = request.get_json()
+            collection_title = data.get('collection_title')
+            endpoint_json  = data.get('endpoint_json')
+
+            db = Database()
+            all_collections = db.get_collections_from_user(user_id=user_id)
+            collection_id = 0
+            if all_collections['status'] == 200:
+                for collection in all_collections['data']['collections']:
+                    if collection_title == collection['title']:
+                        collection_id = collection['id']
+
+                if collection_id:
+
+                    add_endpoint_request = db.add_endpoint(collection_id=collection_id, endpoint_data = endpoint_json)
+                    return add_endpoint_request['data'], add_endpoint_request['status']
+
+                else:
+                    return [f"Collection \"{collection_title}\" does not exist."], 400
+
+            else:
+                return [f"Internal error"], 500
+
+    except Exception as error:
+        print(error)
+        return ["Internal Server Error"], 500
+
+
+@app.route('/change-endpoint', methods=['POST'])
+def change_endpoint():
+    try:
+        sid = request.cookies.get("sid")
+        user_id = validate_session(sid)
+
+        if user_id:
+            data = request.get_json()
+            collection_title = data.get('collection_title')
+            endpoint_json  = data.get('endpoint_json')
+            endpoint_id = data.get('endpoint_id')
+
+            db = Database()
+            all_collections = db.get_collections_from_user(user_id=user_id)
+            collection_id = 0
+
+            if all_collections['status'] == 200:
+                for collection in all_collections['data']['collections']:
+                    if collection_title == collection['title']:
+                        collection_id = collection['id']
+
+                if collection_id:
+                    endpoint_change_request = db.change_endpoint(endpoint_id, collection_id, endpoint_json)
+                    return endpoint_change_request['data'], endpoint_change_request['status']
+                else:
+                    return [f"Collection \"{collection_title}\" does not exist."], 400
+            else:
+                return [f"Internal error"], 500
+
+    except Exception as error:
+        print(error)
+        return ["Internal Server Error"], 500
+
 if __name__ == "__main__":
     app.run(debug=True)

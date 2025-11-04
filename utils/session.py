@@ -4,11 +4,11 @@ from database.main import Database
 def _hash_token(raw: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
-def create_session(user_id: int, minutes: int = 1):
+def create_session(user_id: int, days: int = 1):
     """Create a new session and return brute hash"""
     raw = secrets.token_urlsafe(32)
     h = _hash_token(raw)
-    expires_at = dt.datetime.now() + dt.timedelta(minutes=minutes)
+    expires_at = dt.datetime.now() + dt.timedelta(days=days)
 
     db = Database()
     # metoda ta DB trebuie să facă INSERT în tabelul sessions

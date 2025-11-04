@@ -38,6 +38,7 @@ class Endpoint(Base):
     __tablename__ = "endpoints"
     id = Column(Integer, primary_key=True)
     collection_id = Column(Integer, ForeignKey("collections.id"))
+    title = Column(String)
     url = Column(String)
     method = Column(String)
 

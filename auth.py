@@ -23,7 +23,7 @@ def login():
             if user["email"] == email:
                 if check_password(password, user["password"]):
                     # ✅ Creăm sesiune valabilă 1 zi
-                    raw_token, expires_at = create_session(user["id"], minutes=60)
+                    raw_token, expires_at = create_session(user["id"], days=7)
 
                     resp = make_response(jsonify({"type" : "redirect", "value" : "/"}), 200)
                     resp.set_cookie(
@@ -66,7 +66,7 @@ def register():
             if register_response['status'] == 201:
 
                 new_user_id = register_response['data']['user']['id']
-                raw_token, expires_at = create_session(new_user_id, minutes=60)
+                raw_token, expires_at = create_session(new_user_id, days=1)
 
                 resp = make_response(jsonify({"type" : "redirect", "value" : "/"}), 201 )
                 resp.set_cookie(
