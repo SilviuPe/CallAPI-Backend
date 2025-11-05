@@ -441,12 +441,12 @@ class Database(object):
                 "url": "https://...",
                 "method": "GET",
                 "body": "...",
-                "headers": {...},
+                "headers": [{"name":"...", "value":"..."}, ....],
             }
         :return: Dictionary with endpoint add request status message or error information
         """
 
-        required_endpoint_data_keys = ['title', 'url', 'method']
+        required_endpoint_data_keys = ['title', 'url', 'method', 'headers']
 
         for key in required_endpoint_data_keys:
             if key not in endpoint_data.keys():
@@ -470,7 +470,8 @@ class Database(object):
                                         title=endpoint_data['title'],
                                         collection_id=collection_id,
                                         url=endpoint_data['url'],
-                                        method=endpoint_data['method'].upper())
+                                        method=endpoint_data['method'].upper(),
+                                        headers=endpoint_data['headers'])
 
                     session.add(new_endpoint)
                     session.commit()
@@ -501,12 +502,12 @@ class Database(object):
                 "url": "https://...",
                 "method": "GET",
                 "body": "...",
-                "headers": {...},
+                "headers": [{"name":"...", "value":"..."}, ....],
             }
         :return: Dictionary with endpoint change request status message or error information
         """
 
-        required_endpoint_data_keys = ['title', 'url', 'method']
+        required_endpoint_data_keys = ['title', 'url', 'method', 'headers']
         any_key = False
         for key in required_endpoint_data_keys:
             if key in endpoint_data.keys():

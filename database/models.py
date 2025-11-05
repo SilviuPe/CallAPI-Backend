@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.dialects.postgresql import JSONB
 
 Base = declarative_base()
 
@@ -41,6 +42,7 @@ class Endpoint(Base):
     title = Column(String)
     url = Column(String)
     method = Column(String)
+    headers = Column(JSONB, nullable=False, server_default="[]")
 
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
