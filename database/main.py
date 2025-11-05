@@ -1,11 +1,12 @@
 import os
 from sqlalchemy.orm import Session
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 
 from database.models import User, ClientSession, Collection, Endpoint
 from utils.hashpasswd import hash_password
+from utils.string_manupulation import normalize_title, generate_duplicate_title
 
 load_dotenv('./.env')
 
@@ -502,7 +503,7 @@ class Database(object):
                 "body": "...",
                 "headers": {...},
             }
-        :return: Dictionary with endpoint add request status message or error information
+        :return: Dictionary with endpoint change request status message or error information
         """
 
         required_endpoint_data_keys = ['title', 'url', 'method']
@@ -569,3 +570,110 @@ class Database(object):
                     'data': {'message': str(error)}
                 }
 
+    def edit_collection(self, collection_title: str, collection_json: dict) -> dict:
+        """
+        Method to edit collection data.
+        :param collection_title: title of the collection
+        :param collection_json:  json data
+        :return: Dictionary with endpoint change request status message or error information
+        """
+
+        try:
+            if self.connection_response['status'] == 200:
+                session: Session = self.connection_response["connection"]
+                collection = session.query(Collection).filter(Collection.title == collection_title).first()
+
+                if collection:
+                    for column in collection_json:
+                        if hasattr(collection, column):
+                            setattr(collection, column, collection_json[column])
+
+                    session.commit()
+                    session.refresh(collection)
+
+                    return {
+                        'status': 200,
+                        'data': {'message': "Collection changed successfully!"}
+                    }
+
+                else:
+                    return {
+                        'status': 404,
+                        'data': {'message': "No collection found"}
+                    }
+            else:
+                print(self.connection_response)
+                return {
+                    'status': 400,
+                    'data': {'message': "Internal server error!"}
+                }
+
+        except Exception as error:
+            print(error)
+            return {
+                'status': 400,
+                'data': {'message': str(error)}
+            }
+
+
+    def duplicate_collection(self, collection_title: str, user_id: int) -> dict:
+        """
+        Method to duplicate collection data.
+        :param collection_title: Title of the collection
+        :param user_id: ID of the user
+        :return: Dictionary with collection add request status message or error information
+        """
+        try:
+            if self.connection_response['status'] == 200:
+                session: Session = self.connection_response["connection"]
+                collection = session.query(Collection).filter(Collection.title == collection_title, Collection.user_id == user_id).first()
+
+                if collection:
+
+                    # new_collection = Collection(user_id=user_id, title=collection_title)
+                    norm_title = normalize_title(collection_title)
+                    collections = (session.query(Collection).filter(Collection.title.like(f"{norm_title}%")).all())
+
+                    titles = [collection.title for collection in collections]
+                    new_title = generate_duplicate_title(norm_title, titles)
+
+
+                    new_collection = Collection(user_id= user_id, title=new_title)
+                    session.add(new_collection)
+                    session.flush()
+
+                    endpoints = session.query(Endpoint).filter(Endpoint.collection_id == collection.id).all()
+                    endpoints_cols = [c.key for c in inspect(Endpoint).mapper.column_attrs]
+                    skip = {"id", "created_at", "updated_at", "collection_id"}
+
+                    new_endpoints = []
+
+                    for ep in endpoints:
+                        data = {col: getattr(ep, col) for col in endpoints_cols if col not in skip}
+                        # dacă ai câmpuri UNIQ pe endpoint (ex. name), poate vrei să le ajustezi aici
+                        clone = Endpoint(**data)
+                        clone.collection_id = new_collection.id
+                        new_endpoints.append(clone)
+
+                    session.add_all(new_endpoints)
+                    session.commit()
+                    session.refresh(new_collection)
+
+                    return {
+                        'status': 200,
+                        'data': {'message': "Collection added successfully!"}
+                    }
+
+                else:
+                    return {
+                        'status': 404,
+                        'data': {'message': "No collection found"}
+                    }
+            else:
+                return self.connection_response
+        except Exception as error:
+            print(error)
+            return {
+                'status': 400,
+                'data': {'message': "Internal server error!"}
+            }

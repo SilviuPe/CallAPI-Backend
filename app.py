@@ -198,6 +198,57 @@ def change_endpoint():
             else:
                 return [f"Internal error"], 500
 
+        else:
+            return ["No user found!"], 500
+
+    except Exception as error:
+        print(error)
+        return ["Internal Server Error"], 500
+
+
+@app.route('/edit-collection', methods=['POST'])
+def edit_collection():
+    try:
+        sid = request.cookies.get("sid")
+        user_id = validate_session(sid)
+        if user_id:
+            data = request.get_json()
+            collection_title = data.get('collection_title')
+            collection_json = data.get('collection_json')
+
+            if collection_title:
+                db = Database()
+                change_collection_data_request = db.edit_collection(collection_title=collection_title, collection_json=collection_json)
+                return change_collection_data_request['data'], change_collection_data_request['status']
+            else:
+                return [f"JSON not valid"], 400
+        else:
+            return ["No user found!"], 400
+
+    except Exception as error:
+        print(error)
+        return ["Internal Server Error"], 500
+
+
+@app.route('/duplicate-collection', methods=['POST'])
+def duplicate_collection():
+    try:
+        sid = request.cookies.get("sid")
+        user_id = validate_session(sid)
+        if user_id:
+            data = request.get_json()
+            collection_title = data.get('collection_title')
+
+            if collection_title:
+                db = Database()
+                duplicate_request = db.duplicate_collection(collection_title=collection_title, user_id=user_id)
+                return duplicate_request['data'], duplicate_request['status']
+
+            else:
+                return ['JSON not valid'], 400
+        else:
+            return ["No user found!"], 400
+
     except Exception as error:
         print(error)
         return ["Internal Server Error"], 500
