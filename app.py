@@ -163,7 +163,8 @@ def add_endpoint():
 
             else:
                 return [f"Internal error"], 500
-
+        else:
+            return ["Invalid user ID"], 400
     except Exception as error:
         print(error)
         return ["Internal Server Error"], 500
@@ -197,7 +198,6 @@ def change_endpoint():
                     return [f"Collection \"{collection_title}\" does not exist."], 400
             else:
                 return [f"Internal error"], 500
-
         else:
             return ["No user found!"], 500
 
